@@ -1,13 +1,16 @@
 import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
 import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
 
-const MessageInput = () => {
+const MessageInput = ({ onMessageSent, messages }) => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
+
   const { sendMessage } = useChatStore();
+  const { authUser } = useAuthStore();
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -38,7 +41,18 @@ const MessageInput = () => {
         image: imagePreview,
       });
 
-      // Clear form
+      // Build chat history for smart reply API
+      const history = messages.map((m) => ({
+        role: m.senderId === authUser._id ? "assistant" : "user",
+        text: m.text,
+      }));
+
+      // Call parent-provided callback for smart replies
+      if (onMessageSent && text.trim()) {
+        onMessageSent(text.trim(), history);
+      }
+
+      // Clear input & image
       setText("");
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -59,8 +73,7 @@ const MessageInput = () => {
             />
             <button
               onClick={removeImage}
-              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300
-              flex items-center justify-center"
+              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300 flex items-center justify-center"
               type="button"
             >
               <X className="size-3" />
@@ -88,8 +101,9 @@ const MessageInput = () => {
 
           <button
             type="button"
-            className={`hidden sm:flex btn btn-circle
-                     ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
+            className={`hidden sm:flex btn btn-circle ${
+              imagePreview ? "text-emerald-500" : "text-zinc-400"
+            }`}
             onClick={() => fileInputRef.current?.click()}
           >
             <Image size={20} />
@@ -106,4 +120,5 @@ const MessageInput = () => {
     </div>
   );
 };
+
 export default MessageInput;
